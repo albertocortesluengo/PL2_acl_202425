@@ -1,0 +1,308 @@
+package compiler.syntax;
+
+
+import java_cup.runtime.Symbol;
+import java.util.*;
+
+import es.uned.lsi.compiler.lexical.*;
+import es.uned.lsi.compiler.code.*;
+import es.uned.lsi.compiler.intermediate.*;
+import es.uned.lsi.compiler.semantic.*;
+import es.uned.lsi.compiler.semantic.symbol.*;
+import es.uned.lsi.compiler.semantic.type.*;
+import es.uned.lsi.compiler.syntax.*;
+
+import compiler.CompilerContext;
+import compiler.lexical.*;
+import compiler.syntax.nonTerminal.*;
+import compiler.semantic.symbol.*;
+import compiler.semantic.type.*;
+import compiler.intermediate.*;
+import compiler.code.*;
+
+
+action code {:
+	
+	SyntaxErrorManager   syntaxErrorManager   = CompilerContext.getSyntaxErrorManager();
+	SemanticErrorManager semanticErrorManager = CompilerContext.getSemanticErrorManager ();
+	ScopeManagerIF       scopeManager         = CompilerContext.getScopeManager ();
+	FinalCodeFactoryIF   finalCodeFactory     = CompilerContext.getFinalCodeFactory ();
+
+:}	
+
+parser code {:
+	SyntaxErrorManager syntaxErrorManager = CompilerContext.getSyntaxErrorManager();
+	
+	public void syntax_error(Symbol symbol)
+	{ 
+	    Token token = (Token) symbol.value;
+	    syntaxErrorManager.syntaxError ("Error sintactico", token);	    
+	}
+		
+	public void unrecovered_syntax_error(java_cup.runtime.Symbol symbol)
+	{	
+	    Token token = (Token) symbol.value;
+	    syntaxErrorManager.syntaxFatalError ("Error fatal", token);
+	}
+:}
+
+// TERMINALES
+
+terminal Token MULT;
+terminal Token MINUS;
+terminal Token MAYOR;
+terminal Token DISTINTO;
+terminal Token ASIGNACION;
+terminal Token ACCESO;
+terminal Token PARENTESISAP;
+terminal Token PARENTESISCIERRE;
+terminal Token DELIMCOMENTARIO;
+terminal Token DELIMCADENA;
+terminal Token DELIMLISTA;
+terminal Token DELIMPUNTOCOMA;
+terminal Token DELIMTIPO;
+terminal Token ENTERO;
+terminal Token BOOLEANO;
+terminal Token CADENACARACTERES;
+terminal Token IDENTIFICADOR;
+terminal Token CONSTANT;
+terminal Token AND;
+terminal Token PUTLINE;
+terminal Token WHILE;
+terminal Token ELSE;
+terminal Token RETURN;
+terminal Token IF;
+terminal Token PROCEDURE;
+terminal Token RECORD;
+terminal Token FUNCTION;
+terminal Token IS;
+terminal Token THEN;
+terminal Token INTEGER;
+terminal Token BOOLEAN;
+terminal Token END;
+terminal Token BEGIN;
+terminal Token LOOP;
+terminal Token OUT;
+terminal Token TYPE;
+terminal Token IDERR;
+
+
+
+
+// NO TERMINALES
+
+non terminal  			program;
+non terminal Axiom		axiom;
+non terminal            declaraciones;
+non terminal            cuerpo;
+non terminal            declConstantes;
+non terminal            grupoDeclaraciones1;
+non terminal            declTipos;
+non terminal            grupoDeclaraciones2;
+non terminal            declVariables;
+non terminal            grupoDeclaraciones3;
+non terminal            declSubprogramas;
+non terminal            constante;
+non terminal            literal;
+non terminal            declTipo;
+non terminal            declCampos;
+non terminal            declCampo;
+non terminal            tipo;
+non terminal            declVariable;
+non terminal            declSubprograma;
+non terminal            declFunction;
+non terminal            declProcedimiento;
+non terminal            declParametros;
+non terminal            tipoRetorno;
+non terminal            declaracionesFunction;
+non terminal            cuerpoFunction;
+non terminal            declParametro;
+non terminal            listaParametros;
+non terminal            sentencias;
+non terminal            sentencia;
+non terminal            sentenciaPutLine;
+non terminal            sentenciaAsignacion;
+non terminal            sentenciaIf;
+non terminal            sentenciaWhile;
+non terminal            sentenciaReturn;
+non terminal            sentenciaProcedimiento;
+non terminal            ref;
+non terminal            expresion;
+non terminal            expresionAccesoRegistro;
+non terminal            parametro;
+non terminal            exprFuncion;
+non terminal            operadorLogico;
+non terminal            operadorRelacional;
+non terminal            operadorAritmetico;
+non terminal            operando;
+non terminal            listaParametrosInvocacion;
+
+
+
+// RELACIONES DE PRECEDENCIA Y ASOCIATIVIDAD
+
+precedence left     AND;
+precedence left     DISTINTO;
+precedence left     MAYOR;
+precedence left     MINUS;
+precedence left     MULT;
+precedence left     IDENTIFICADOR, ACCESO, PARENTESISAP, PARENTESISCIERRE;
+
+
+
+// REGLAS DE PRODUCCIÓN
+
+
+start with program;
+
+program ::= 
+  {: 
+        syntaxErrorManager.syntaxInfo ("Starting parsing..."); 
+   :}
+  axiom:ax
+  {:   		
+  		// No modificar esta estructura, aunque se pueden añadir más acciones semánticas
+  		
+  		//List intermediateCode = ax.getIntermediateCode ();
+  		//finalCodeFactory.create (intermediateCode);
+
+  		// En caso de no comentarse las dos sentencias anteriores se puede generar una excepcion
+  		// en las llamadas a cupTest si el compilador no está completo. Esto es debido a que 
+  		// aún no se tendrá implementada la generación de código intermedio ni final.
+  		// Para la entrega final deberán descomentarse y usarse.
+  		
+  		syntaxErrorManager.syntaxInfo ("Parsing process ended.");
+  		
+   :};
+   
+
+
+
+axiom ::=   PROCEDURE IDENTIFICADOR PARENTESISAP PARENTESISCIERRE IS 
+            declaraciones
+            cuerpo;  
+            
+                                
+//declaraciones
+declaraciones ::= declConstantes grupoDeclaraciones1 | grupoDeclaraciones1;
+grupoDeclaraciones1 ::= declTipos grupoDeclaraciones2 | grupoDeclaraciones2;
+grupoDeclaraciones2 ::= declVariables grupoDeclaraciones3 | grupoDeclaraciones3;
+grupoDeclaraciones3 ::= declSubprogramas | ;
+
+//declaración de constantes
+declConstantes ::= constante | declConstantes constante ;
+constante ::= IDENTIFICADOR DELIMTIPO CONSTANT ASIGNACION literal DELIMPUNTOCOMA;
+
+
+literal ::= ENTERO | BOOLEANO;
+
+//declaración de tipos estructurados
+declTipos ::= declTipo | declTipos declTipo ;
+declTipo::= TYPE IDENTIFICADOR IS RECORD declCampos END RECORD DELIMPUNTOCOMA;
+
+
+declCampos ::= declCampo | declCampos declCampo;
+declCampo ::= IDENTIFICADOR DELIMTIPO tipo DELIMPUNTOCOMA;
+
+
+//declaración de variables globales
+declVariables ::= declVariable | declVariables declVariable;
+declVariable ::= IDENTIFICADOR DELIMTIPO tipo DELIMPUNTOCOMA | 
+                 IDENTIFICADOR DELIMLISTA declVariable;
+
+tipo ::= INTEGER | BOOLEAN | IDENTIFICADOR;
+
+//declaración subprograma
+declSubprogramas ::= declSubprograma | declSubprogramas declSubprograma;
+declSubprograma ::= declFunction | declProcedimiento;
+
+//declaración función
+declFunction ::= FUNCTION IDENTIFICADOR PARENTESISAP declParametros PARENTESISCIERRE RETURN tipoRetorno IS
+                    declaracionesFunction
+					cuerpoFunction |
+				 FUNCTION IDENTIFICADOR PARENTESISAP PARENTESISCIERRE RETURN tipoRetorno IS
+				    declaracionesFunction
+					cuerpoFunction;	
+				
+declParametros ::= declParametro DELIMPUNTOCOMA declParametros | declParametro;	
+declParametro ::= listaParametros DELIMTIPO tipo | listaParametros DELIMTIPO OUT tipo;		
+listaParametros ::= IDENTIFICADOR DELIMLISTA listaParametros | IDENTIFICADOR;
+
+tipoRetorno ::= INTEGER | BOOLEAN;
+
+declaracionesFunction ::= grupoDeclaraciones1;
+
+                    
+cuerpoFunction ::=  BEGIN 
+                       sentencias
+                    END IDENTIFICADOR DELIMPUNTOCOMA;
+                                     
+
+
+//declaración procedimiento
+declProcedimiento ::= PROCEDURE IDENTIFICADOR PARENTESISAP declParametros PARENTESISCIERRE IS 
+                         declaracionesFunction
+                         cuerpo | PROCEDURE IDENTIFICADOR PARENTESISAP PARENTESISCIERRE IS 
+                         declaracionesFunction
+                         cuerpo;          
+
+
+//cuerpo
+                    
+cuerpo ::=  BEGIN 
+                 sentencias
+            END IDENTIFICADOR DELIMPUNTOCOMA | 
+            BEGIN 
+            END IDENTIFICADOR DELIMPUNTOCOMA;
+            
+           
+                        
+//sentencias                        
+sentencias ::= sentencia sentencias | sentencia;
+sentencia ::= sentenciaPutLine | sentenciaAsignacion | sentenciaIf | sentenciaWhile | sentenciaReturn | sentenciaProcedimiento;
+       
+//sentencia asignación            
+sentenciaAsignacion ::= ref ASIGNACION expresion DELIMPUNTOCOMA;
+
+ref ::= IDENTIFICADOR | expresionAccesoRegistro;
+
+//sentencia if
+sentenciaIf ::= IF expresion THEN sentencias END IF DELIMPUNTOCOMA | IF expresion THEN sentencias ELSE sentencias END IF DELIMPUNTOCOMA;
+
+//sentencia while
+sentenciaWhile ::= WHILE expresion LOOP sentencias END LOOP DELIMPUNTOCOMA;
+
+
+//sentencia Put_line
+sentenciaPutLine ::= PUTLINE PARENTESISAP parametro PARENTESISCIERRE DELIMPUNTOCOMA;
+parametro ::= expresion | CADENACARACTERES;
+
+//sentencia Return 
+sentenciaReturn ::= RETURN expresion DELIMPUNTOCOMA;   
+
+
+
+//sentencia llamada procedimiento
+sentenciaProcedimiento ::= exprFuncion DELIMPUNTOCOMA;
+
+
+
+//expresiones
+expresion ::=       expresion operadorLogico expresion | 
+                    expresion operadorRelacional expresion | 
+                    expresion operadorAritmetico expresion |
+                    expresionAccesoRegistro | exprFuncion | operando | 
+                    PARENTESISAP expresion PARENTESISCIERRE;
+                    
+operando ::= BOOLEANO | IDENTIFICADOR | ENTERO;   
+operadorRelacional ::= DISTINTO | MAYOR;                           
+operadorAritmetico ::= MINUS | MULT; 
+operadorLogico ::= AND;                   
+                                              
+//expresion de acceso a campos de registros                         
+expresionAccesoRegistro ::= IDENTIFICADOR ACCESO IDENTIFICADOR | IDENTIFICADOR ACCESO expresionAccesoRegistro; 
+
+//invocación de funciones                    
+exprFuncion ::= IDENTIFICADOR PARENTESISAP listaParametrosInvocacion PARENTESISCIERRE | IDENTIFICADOR PARENTESISAP PARENTESISCIERRE;         
+listaParametrosInvocacion ::= expresion | expresion DELIMLISTA listaParametrosInvocacion;                  
+                    
